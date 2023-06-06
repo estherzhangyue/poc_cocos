@@ -1,13 +1,15 @@
+import { Canvas, Label, SpriteFrame } from 'cc';
 import { _decorator, Component, Node, MeshRenderer, Button, Texture2D, Vec2, v2, systemEvent, SystemEventType, Vec3, Camera, Sprite } from 'cc';
-import { Color } from 'cc';
+import { Color, Graphics, screen } from 'cc';
 const { ccclass, property } = _decorator;
-const brownColor = new Color(104, 52, 52);
 const greenColor = new Color(26, 94, 26);
-const blueColor = new Color(101,153,148);
-const purpleColor = new Color(137, 101, 153);
+const blueColor = new Color(140,195,190);
+const purpleColor = new Color(182, 168, 177);
 const whiteColor = new Color(236,236,236);
-const grayColor = new Color(89, 85, 91);
+const grayColor = new Color(83, 87, 98);
 const blackColor = new Color(34, 34, 34);
+const redColor = new Color(145, 30, 35);
+const orangeColor = new Color(224,152,93);
 const bgColor = new Color(52, 36, 65);
 var outsoleMaterial = null;
 var insoleMaterial = null;
@@ -15,22 +17,40 @@ var meshRenderer = null;
 var materials = null;
 var shoe = null;
 var originTexture = null;
+const w = 260;
+const h = 72;
+var currentIndex = 0;
+const changeView = ['laces', 'mesh', 'caps', 'inner', 'sole', 'stripes', 'band', 'patch']
+const lacesColor = [blackColor, grayColor, whiteColor, redColor, blueColor, purpleColor, orangeColor]
+var currentPart = null;
 
 @ccclass('changeColor')
 export class changeColor extends Component {
-    @property({type: Texture2D })
-    textureNormal: Texture2D = null;
+@property({type: Texture2D })
+textureNormal: Texture2D = null;
 
-    @property(Texture2D)
-    textureFabric: Texture2D = null;
+@property(Texture2D)
+textureFabric: Texture2D = null;
 
-    @property(Texture2D)
-    textureBase: Texture2D = null;
+@property(Texture2D)
+textureBase: Texture2D = null;
 
-    @property(Texture2D)
-    textureLeather: Texture2D = null;
+@property(Texture2D)
+textureLeather: Texture2D = null;
 
-    @property({ type: Node })
+@property(SpriteFrame)
+canvas: SpriteFrame = null;
+
+@property(SpriteFrame)
+canvasSelected: SpriteFrame = null;
+
+@property(SpriteFrame)
+leather: SpriteFrame = null;
+
+@property(SpriteFrame)
+leatherSelected: SpriteFrame = null;
+
+@property({ type: Node })
 public playerPos: Node = null;
 
 @property({ type: Node })
@@ -52,19 +72,19 @@ public endPos: Vec2;
 public moveSpeed = 10;
 
 public RotaValue = 0;
+
     
     start() {
-        // find(‘Main Camera’).getComponent(Camera).clearColor = new Color(233, 200, 100, 255)
-        //init color
-        meshRenderer = this.node.getComponentInChildren(MeshRenderer);
-        //const mainCamera = this.node.parent.parent.children[1];
-        // mainCamera.getComponent(Camera).clearColor = bgColor;
 
+        meshRenderer = this.node.getComponentInChildren(MeshRenderer);
         materials = meshRenderer.materials;
+        currentPart = materials[0];
         outsoleMaterial = materials[1];
         insoleMaterial = materials[3];
-        outsoleMaterial.setProperty("mainColor",brownColor);
+        outsoleMaterial.setProperty("mainColor",whiteColor);
         insoleMaterial.setProperty("mainColor",whiteColor);
+        outsoleMaterial.setProperty('normalMap', this.textureFabric);
+        console.log('=========materials', materials);
 
         originTexture = outsoleMaterial.getProperty('normalMap');
         meshRenderer.materials = materials;
@@ -73,6 +93,26 @@ public RotaValue = 0;
 
         shoe = this.node.children[0];
         console.log('-safcas', originTexture);
+        this.setMaterialButton();
+        // TODO: add color button automatic
+        // this.setColorButton();
+    }
+
+    setMaterialButton() {
+        let leatherNode = this.node.parent.children[1].children[1].children[1].children[0];
+        let canvasNode = this.node.parent.children[1].children[1].children[1].children[1];
+
+        let leatherButton = leatherNode.getComponent(Button);
+        let canvasButton = canvasNode.getComponent(Button);
+
+        leatherNode.on(Node.EventType.TOUCH_END, ()=>{
+            leatherButton.normalSprite = this.leatherSelected;
+            canvasButton.normalSprite = this.canvas;
+        }, this);
+        canvasNode.on(Node.EventType.TOUCH_END, ()=>{
+            leatherButton.normalSprite = this.leather;
+            canvasButton.normalSprite = this.canvasSelected;
+        }, this);
     }
 
     onLoad() {
@@ -99,11 +139,11 @@ public RotaValue = 0;
         console.log("diff：" + pos);
         if (pos.x < 0)//left
         {
-            this.RotaValue -= 5;
+            this.RotaValue -= 3;
         }
         else //right
         {
-            this.RotaValue += 5;
+            this.RotaValue += 3;
         }
     
         //rotate
@@ -112,51 +152,138 @@ public RotaValue = 0;
     }
     
 
-    onButtonClick(_, msg) {
+    onColorButtonClick(_, msg) {
         console.log('start click');
-        if (msg == 'brown') { 
-            outsoleMaterial.setProperty("mainColor",brownColor);
+        console.log('===========msg', msg);
+        if (msg == 'red') { 
+            this.changeShoeColor(redColor);
         } else if (msg == 'green') {
-            outsoleMaterial.setProperty("mainColor",greenColor);
+            this.changeShoeColor(greenColor);
         } else if (msg == 'blue') {
-            outsoleMaterial.setProperty("mainColor",blueColor);
+            this.changeShoeColor(blueColor);
         } else if (msg == 'purple') {
-            outsoleMaterial.setProperty("mainColor",purpleColor);
+            this.changeShoeColor(purpleColor);
         } else if (msg == 'white') {
-            insoleMaterial.setProperty("mainColor",whiteColor);
+            this.changeShoeColor(whiteColor);
         } else if (msg == 'gray') {
-            insoleMaterial.setProperty("mainColor",grayColor);
+            this.changeShoeColor(grayColor);
         } else if (msg == 'black') {
-            insoleMaterial.setProperty("mainColor",blackColor);
-        } else {
-            this.swithcTextue(msg);
+            this.changeShoeColor(blackColor);
+        } else if (msg == 'orange') {
+            this.changeShoeColor(orangeColor);
         }
         meshRenderer.materials = materials;
-        console.log('msg=======', msg);
+    }
+
+    changeShoeColor(color) {
+        console.log('currentpart', currentPart, 'current color', color);
+        currentPart.setProperty("mainColor", color);
+    }
+
+    onMeshButtonClick(_, msg) {
+        console.log('mesh button click');
+        let meshText = this.node.parent.children[1].children[1].children[0].children[1];
+        console.log('=========materialNode', meshText);
+        if (msg == 'left') { 
+            currentIndex = currentIndex <= 0 ? 0 : currentIndex - 1;
+        } else if (msg == 'right') {
+            currentIndex = currentIndex >= changeView.length - 1 ? currentIndex : currentIndex + 1;
+        } 
+        meshText.getComponent(Label).string = changeView[currentIndex];
+        currentPart = materials[currentIndex];
+        console.log('currentIndex=======', currentIndex);
+    }
+
+    onMaterialButtonClick(_, msg) {
+        console.log('material button click', msg);
+        this.swithcTextue(msg);
     }
 
     swithcTextue(msg) {
-        console.log('this.texture current=======', outsoleMaterial);
-        if (msg == 'classic') { 
-            outsoleMaterial.setProperty('normalMap', this.textureNormal);
-            outsoleMaterial.setProperty('metallicRoughnessMap', this.textureBase);
-            outsoleMaterial.setProperty('occlusionMap', this.textureBase);
-        } else if (msg == 'fabric') {
-            outsoleMaterial.setProperty('normalMap', this.textureFabric);
-            outsoleMaterial.setProperty('metallicRoughnessMap', this.textureBase);
-            outsoleMaterial.setProperty('occlusionMap', this.textureBase);
-        } else {
-            outsoleMaterial.setProperty('normalMap', this.textureLeather);
-            outsoleMaterial.setProperty('metallicRoughnessMap', this.textureBase);
-            outsoleMaterial.setProperty('occlusionMap', this.textureBase);
+        console.log('this.texture current=======', currentPart);
+        if (msg == 'canvas') { 
+            currentPart.setProperty('normalMap', this.textureFabric);
+            currentPart.setProperty('metallicRoughnessMap', this.textureBase);
+            currentPart.setProperty('occlusionMap', this.textureBase);
+        } else if (msg == 'leather') {
+            currentPart.setProperty('normalMap', this.textureLeather);
+            currentPart.setProperty('metallicRoughnessMap', this.textureBase);
+            currentPart.setProperty('occlusionMap', this.textureBase);
         }
-        // console.log('this.textureLeather=======', this.textureLeather);
         meshRenderer.materials = materials;
     }
 
-    
 
     update(deltaTime: number) {
+    }
+
+
+    draw(graphics: Graphics, fillcolor: Color, strokecolor: Color, startX: number) {
+        graphics.clear();
+        console.log('=========satrtx', startX);
+        graphics.roundRect(startX, -h / 2, w, h, h / 2);
+        graphics.fillColor = fillcolor;
+        graphics.fill();
+        graphics.lineWidth = 3;
+        graphics.strokeColor = strokecolor;
+        graphics.stroke();
+    }
+
+    setColorButton() {
+        let colorNode = this.node.parent.children[1].children[1].children[2]
+        console.log('===========othernode', this.node.parent.children[1].children[1].children[1]);
+        let screeWidth = screen.windowSize.width
+        console.log('===========screeWidth', screeWidth);
+        var startx = (screeWidth - 64 * lacesColor.length - 10 * (lacesColor.length - 1)) / 2;
+        console.log('===========devicePixelRatio', screen.devicePixelRatio);
+        console.log('===========start x', startx);
+        for(let i:number = 0 ; i < lacesColor.length ; i++){
+         let buttonNode = new Node();
+         
+        
+         buttonNode.addComponent(Button);
+         buttonNode.addComponent(Graphics).circle(startx/2 + i * 32, 0, 32);
+         var button = buttonNode.getComponent(Button);
+         var graphics = buttonNode.getComponent(Graphics);
+         console.log('===========colorNode', colorNode);
+         console.log('===========button', buttonNode);
+        //  button.addComponent(Graphics);
+         
+         
+        //  graphics.clear();
+         var x = startx/2 + i * 32
+         console.log('===========xxxxx', x);
+         graphics.circle(startx/2 + i * 32, 0, 32);
+         graphics.fillColor = lacesColor[i];
+         graphics.fill();
+         graphics.node.active = true;
+         button.getComponent(Graphics).fillColor = Color.RED;   
+
+         var clickEventHandler = new Component.EventHandler();
+         clickEventHandler.target = this.node; 
+         clickEventHandler.component = "changeColor";
+         clickEventHandler.handler = "onColorButtonClick";
+         clickEventHandler.customEventData = lacesColor[i].toString();
+ 
+         button.clickEvents.push(clickEventHandler);
+
+         colorNode.addChild(buttonNode);
+        } 
+        
+         
+        //  colorNode.addComponent(Button);
+        //  var button = colorNode.getComponent(Button);
+        //  console.log('===========colorNode', colorNode);
+        //  console.log('===========button', buttonNode);
+        //  button.addComponent(Graphics);
+        //  var graphics = button.getComponent(Graphics);
+         
+        // //  graphics.clear();
+         
+       
+        //  graphics.circle(startx/2, 0, 32);
+        //  graphics.fillColor = lacesColor[3];
+        //  graphics.fill();
     }
 }
 
