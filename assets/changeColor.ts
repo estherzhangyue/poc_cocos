@@ -1,4 +1,4 @@
-import { Canvas, Label, SpriteFrame } from 'cc';
+import { Canvas, Label, SpriteFrame, tween } from 'cc';
 import { _decorator, Component, Node, MeshRenderer, Button, Texture2D, Vec2, v2, systemEvent, SystemEventType, Vec3, Camera, Sprite } from 'cc';
 import { Color, Graphics, screen } from 'cc';
 const { ccclass, property } = _decorator;
@@ -10,7 +10,8 @@ const grayColor = new Color(83, 87, 98);
 const blackColor = new Color(34, 34, 34);
 const redColor = new Color(145, 30, 35);
 const orangeColor = new Color(224,152,93);
-const bgColor = new Color(52, 36, 65);
+
+const hightlightColor = new Color(235,245,255);
 var outsoleMaterial = null;
 var insoleMaterial = null;
 var meshRenderer = null; 
@@ -23,6 +24,8 @@ var currentIndex = 0;
 const changeView = ['laces', 'mesh', 'caps', 'inner', 'sole', 'stripes', 'band', 'patch']
 const lacesColor = [blackColor, grayColor, whiteColor, redColor, blueColor, purpleColor, orangeColor]
 var currentPart = null;
+var materialNode = null;
+var colorNode =null;
 
 @ccclass('changeColor')
 export class changeColor extends Component {
@@ -72,28 +75,36 @@ public endPos: Vec2;
 public moveSpeed = 10;
 
 public RotaValue = 0;
-
     
     start() {
-
         meshRenderer = this.node.getComponentInChildren(MeshRenderer);
         materials = meshRenderer.materials;
         currentPart = materials[0];
-        outsoleMaterial = materials[1];
-        insoleMaterial = materials[3];
-        outsoleMaterial.setProperty("mainColor",whiteColor);
-        insoleMaterial.setProperty("mainColor",whiteColor);
+        materialNode = this.node.parent.children[1].children[1].children[1];
+        colorNode = this.node.parent.children[1].children[1].children[2];
+        console.log('=========colorNode', colorNode);
+        var labels = colorNode.getComponentsInChildren(Label);
+
+        console.log('=========Label', labels);
+        // materialNode.active = false;
+
+         outsoleMaterial = materials[1];
+        // insoleMaterial = materials[3];
+        // outsoleMaterial.setProperty("mainColor",whiteColor);
+        // insoleMaterial.setProperty("mainColor",whiteColor);
         outsoleMaterial.setProperty('normalMap', this.textureFabric);
+        this.initMaterialColor();
         console.log('=========materials', materials);
 
         originTexture = outsoleMaterial.getProperty('normalMap');
         meshRenderer.materials = materials;
         //handle button
         let button = this.node.getComponentInChildren(Button);
-
+        this.rotaTarget.eulerAngles = new Vec3(0, -120, 0);
         shoe = this.node.children[0];
         console.log('-safcas', originTexture);
         this.setMaterialButton();
+        this.updateColorSelected();
         // TODO: add color button automatic
         // this.setColorButton();
     }
@@ -151,7 +162,6 @@ public RotaValue = 0;
         console.log("current target rotate：" + this.rotaTarget.eulerAngles);
     }
     
-
     onColorButtonClick(_, msg) {
         console.log('start click');
         console.log('===========msg', msg);
@@ -175,23 +185,65 @@ public RotaValue = 0;
         meshRenderer.materials = materials;
     }
 
-    changeShoeColor(color) {
-        console.log('currentpart', currentPart, 'current color', color);
+    changeShoeColor(color, updateText = true) {
+        console.log('==========changeShoeColor-----update', updateText);
         currentPart.setProperty("mainColor", color);
+        if (color != hightlightColor && updateText) {
+            console.log('=======changecolor');
+            this.updateColorSelected();
+        }
     }
 
     onMeshButtonClick(_, msg) {
         console.log('mesh button click');
         let meshText = this.node.parent.children[1].children[1].children[0].children[1];
-        console.log('=========materialNode', meshText);
         if (msg == 'left') { 
             currentIndex = currentIndex <= 0 ? 0 : currentIndex - 1;
         } else if (msg == 'right') {
             currentIndex = currentIndex >= changeView.length - 1 ? currentIndex : currentIndex + 1;
         } 
+        if (currentIndex == 0) {
+            this.rotaTarget.eulerAngles = new Vec3(0, -120, 0);
+        } else if (currentIndex == 1) {
+            this.rotaTarget.eulerAngles = new Vec3(0, 0, 0);
+        } else if (currentIndex == 2) {
+            this.rotaTarget.eulerAngles = new Vec3(0, -50, 0);
+        } else if (currentIndex == 3) {
+            this.rotaTarget.eulerAngles = new Vec3(0, 120, 0);
+        } else if (currentIndex == 4 || currentIndex == 5) {
+            this.rotaTarget.eulerAngles = new Vec3(0, 160, 0);
+        } else if (currentIndex == 6) {
+            this.rotaTarget.eulerAngles = new Vec3(0, 220, 0);
+        } else if (currentIndex == 7) {
+            this.rotaTarget.eulerAngles = new Vec3(0, 60, 0);
+        }
+
         meshText.getComponent(Label).string = changeView[currentIndex];
         currentPart = materials[currentIndex];
         console.log('currentIndex=======', currentIndex);
+        var currentColor = currentPart.getProperty("mainColor");
+        if (currentColor == null) { 
+            currentColor = whiteColor;
+            this.changeShoeColor(currentColor, false);
+         };
+        console.log('currentColor=======', currentColor.toString());
+        console.log('==========hightlight');
+        setTimeout(this.changeShoeColor, 100, hightlightColor, false);  
+        // tween(currentPart).to(2, {}, {
+        //     onUpdate(currentPart) {
+        //         currentPart.setProperty("mainColor", currentColor);
+        //     },
+        // }).start();
+
+        setTimeout(this.changeShoeColor, 1000, currentColor, false);  
+        setTimeout(this.updateColorSelected, 1100);  
+        if (currentIndex == 0 || currentIndex == 7 || currentIndex == 8 || currentIndex == 5 || currentIndex == 4 ) {
+            materialNode.active = false;
+            // materialNode.alpha = 0;
+        } else {
+            materialNode.active = true;
+        } 
+        //laces caps sole band patch 
     }
 
     onMaterialButtonClick(_, msg) {
@@ -211,6 +263,47 @@ public RotaValue = 0;
             currentPart.setProperty('occlusionMap', this.textureBase);
         }
         meshRenderer.materials = materials;
+    }
+
+    updateColorSelected() {
+        console.log('==========updateColorSelected');
+        var labels = colorNode.getComponentsInChildren(Label);
+        var index = 0;
+        const currentColor = currentPart.getProperty("mainColor");
+        console.log('==========updateColorSelected maincolor', currentColor);
+        if (currentColor == null) {
+            index = 2;
+            currentPart.setProperty("mainColor", whiteColor);
+        } else {
+            if (currentColor == blackColor) {
+                index = 0;
+            } else if (currentColor == grayColor) {
+                index = 1;
+            } else if (currentColor == whiteColor) {
+                index = 2;
+            } else if (currentColor == redColor) {
+                index = 3;
+            } else if (currentColor == blueColor) {
+                index = 4;
+            } else if (currentColor == purpleColor) {
+                index = 5;
+            } else if (currentColor == orangeColor) {
+                index = 6;
+            } 
+        }
+        for(let i:number = 0 ; i < labels.length ; i++){
+            if (i==index) {
+                labels[i].color = blackColor;
+            } else {
+                labels[i].color = Color.WHITE;
+            }
+        }
+    }
+
+    initMaterialColor() {
+        for(let i:number = 0 ; i < materials.length ; i++){
+            materials[i].setProperty("mainColor",whiteColor);
+        }
     }
 
 
@@ -235,8 +328,6 @@ public RotaValue = 0;
         let screeWidth = screen.windowSize.width
         console.log('===========screeWidth', screeWidth);
         var startx = (screeWidth - 64 * lacesColor.length - 10 * (lacesColor.length - 1)) / 2;
-        console.log('===========devicePixelRatio', screen.devicePixelRatio);
-        console.log('===========start x', startx);
         for(let i:number = 0 ; i < lacesColor.length ; i++){
          let buttonNode = new Node();
          
@@ -248,8 +339,6 @@ public RotaValue = 0;
          console.log('===========colorNode', colorNode);
          console.log('===========button', buttonNode);
         //  button.addComponent(Graphics);
-         
-         
         //  graphics.clear();
          var x = startx/2 + i * 32
          console.log('===========xxxxx', x);
@@ -270,7 +359,6 @@ public RotaValue = 0;
          colorNode.addChild(buttonNode);
         } 
         
-         
         //  colorNode.addComponent(Button);
         //  var button = colorNode.getComponent(Button);
         //  console.log('===========colorNode', colorNode);
